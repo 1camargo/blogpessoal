@@ -20,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.generation.blogpessoal.model.Postagem;
 import com.generation.blogpessoal.repository.PostagemRepository;
+import com.generation.blogpessoal.repository.TemaRepository;
 
 import jakarta.validation.Valid;
 
@@ -30,6 +31,9 @@ public class PostagemController {
 	
 	@Autowired
 	private PostagemRepository postagemRepository;
+	
+	@Autowired
+	private TemaRepository temaRepository;
 	
 	@GetMapping
 	public ResponseEntity<List<Postagem>> getAll() {
@@ -50,16 +54,27 @@ public class PostagemController {
 	
 	@PostMapping //salva um novo Objeto da Classe Postagem (equivalente a adicionar um valor na tb_postagens)
 	public ResponseEntity<Postagem> post(@Valid @RequestBody Postagem postagem) {
-		return ResponseEntity.status(HttpStatus.CREATED)
-				.body(postagemRepository.save(postagem));
+		if (temaRepository.existsById(postagem.getTema().getId()))
+			return ResponseEntity.status(HttpStatus.CREATED)
+					.body(postagemRepository.save(postagem));
+		
+		throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tema não existe!", null);
 	}
 	
 	@PutMapping //atualiza um Objeto postagem no Banco de Dados localizando pelo ID, caso não localize, vai retornar 404 - Not Found 
 	public ResponseEntity<Postagem> put(@Valid @RequestBody Postagem postagem) {
-		return postagemRepository.findById(postagem.getId())
-				.map(resposta -> ResponseEntity.status(HttpStatus.OK)
-						.body(postagemRepository.save(postagem)))
-				.orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+		if (postagemRepository.existsById(postagem.getId())) {
+			
+				if (temaRepository.existsById(postagem.getTema().getId()))
+					return ResponseEntity.status(HttpStatus.OK)
+							.body(postagemRepository.save(postagem));
+				
+				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tema não existe!", null);
+		
+		}
+		
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+	
 	}
 	
 	@ResponseStatus(HttpStatus.NO_CONTENT)
